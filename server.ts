@@ -1,22 +1,40 @@
-export interface DataStore {
+import { SyncingRequest, SyncingResponse } from "./shared";
+
+export interface ServerDataItem {
+  id: string;
   timestamp: number;
-  data: string;
+  value: string;
+}
+
+export interface ServerDataStore {
+  items: {
+    [id: string]: ServerDataItem;
+  };
+}
+
+interface ServerChangeMap {
+  [id: string]: any;
 }
 
 export class Server {
-  store: DataStore = {
-    timestamp: 0,
-    data: "",
-  };
+  store: ServerDataStore;
 
-  synchronize(clientDataStore: DataStore): DataStore {
-    if (clientDataStore.timestamp > this.store.timestamp) {
-      this.store = clientDataStore;
-      return undefined;
-    } else if (clientDataStore.timestamp < this.store.timestamp) {
-      return this.store;
-    } else {
-      return undefined;
+  synchronize(request: SyncingRequest): SyncingResponse {
+    let lastTimestamp = request.timestamp;
+    let now = Date.now();
+    let serverChanges: ServerChangeMap = Object.create(null);
+    let items = this.store.items;
+
+    for (let id of Object.keys(items)) {
+      let item = items[id];
+      if (item.timestamp > lastTimestamp) {
+        serverChanges[id] = item.value;
+      }
     }
+
+    return {
+      timestamp: now,
+      changes: serverChanges,
+    };
   }
 }

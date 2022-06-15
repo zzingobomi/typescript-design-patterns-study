@@ -1,22 +1,41 @@
-import { DataStore, Server } from "./";
+import { Server } from "./";
+
+export interface ClientDataItem {
+  id: string;
+  value: string;
+}
+
+export interface ClientDataStore {
+  timestamp: number;
+  items: {
+    [id: string]: ClientDataItem;
+  };
+}
 
 export class Client {
-  store: DataStore = {
+  store: ClientDataStore = {
     timestamp: 0,
-    data: undefined,
+    items: Object.create(null),
   };
 
   constructor(public server: Server) {}
 
   synchronize(): void {
-    let updatedStore = this.server.synchronize(this.store);
-    if (updatedStore) {
-      this.store = updatedStore;
-    }
-  }
+    let store = this.store;
+    let response = this.server.synchronize({
+      timestamp: store.timestamp,
+    });
 
-  update(data: string): void {
-    this.store.data = data;
-    this.store.timestamp = Date.now();
+    let clientItems = store.items;
+    let serverChanges = response.changes;
+
+    for (let id of Object.keys(serverChanges)) {
+      clientItems[id] = {
+        id,
+        value: serverChanges[id],
+      };
+    }
+
+    store.timestamp = response.timestamp;
   }
 }
